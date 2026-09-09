@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6efe7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DiarioCacca">
+<title>DiarioCacca</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg:#f6efe7;--card:#fffaf4;--text:#302923;--muted:#7b7169;--line:#eaded3;--accent:#896746;--soft:#efe1d3;--danger:#a24e4e}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+.app{max-width:720px;margin:auto;padding:22px 12px 44px}h1{margin:0;font-size:34px}.sub{color:var(--muted);line-height:1.45;margin:8px 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 28px #4a342012}
+.toolbar{display:flex;align-items:center;padding:12px;gap:8px}.title{flex:1;text-align:center;font-size:21px;font-weight:800;text-transform:capitalize}
+.nav{width:44px;height:44px;border:0;border-radius:14px;background:var(--soft);font-size:25px}
+.week,.cal{display:grid;grid-template-columns:repeat(7,1fr)}.week{text-align:center;color:var(--muted);font-size:11px;font-weight:800;padding:0 8px 6px}
+.cal{gap:5px;padding:8px}.day{min-height:75px;border:1px solid var(--line);border-radius:14px;background:white;padding:7px;position:relative;text-align:left;color:var(--text)}
+.day.other{opacity:.28}.day.today{outline:2px solid var(--accent)}.num{font-weight:800}.poop{font-size:20px;margin-top:9px;line-height:1}.badge{position:absolute;right:5px;top:5px;background:var(--accent);color:white;border-radius:20px;font-size:10px;font-weight:800;padding:2px 6px}
+.summary{margin-top:12px;padding:15px}.summary b{display:block;font-size:18px}.summary span,.privacy{color:var(--muted);font-size:13px}.privacy{text-align:center;margin-top:14px}
+dialog{width:min(480px,calc(100% - 24px));border:0;border-radius:22px;padding:0;background:var(--card);color:var(--text)}dialog::backdrop{background:#201a164f;backdrop-filter:blur(2px)}
+form{padding:20px}.head{display:flex;justify-content:space-between;align-items:center}.head h2{margin:0;font-size:21px}.x{border:0;background:transparent;font-size:21px}
+.counter{display:flex;justify-content:center;align-items:center;gap:18px;margin:25px 0}.round{width:50px;height:50px;border:0;border-radius:50%;background:var(--soft);font-size:29px}.count{font-size:44px;font-weight:900}
+label{font-size:14px;font-weight:700}textarea{width:100%;margin-top:7px;border:1px solid var(--line);border-radius:13px;padding:12px;font:inherit}
+.actions{display:flex;gap:9px;margin-top:18px}.save,.clear{border:0;border-radius:14px;padding:13px;font-weight:800;font-size:15px}.save{background:var(--accent);color:white;flex:1}.clear{background:#f4e0e0;color:var(--danger)}
+@media(max-width:480px){.day{min-height:66px;padding:5px}.poop{font-size:17px}.app{padding-left:8px;padding-right:8px}}
+</style>
+</head>
+<body>
+<main class="app">
+<h1>DiarioCacca 💩</h1>
+<p class="sub">Tocca un giorno e registra quante volte il bimbo ha fatto la cacca.</p>
+<section class="card">
+<div class="toolbar"><button class="nav" id="prev">‹</button><div class="title" id="title"></div><button class="nav" id="next">›</button></div>
+<div class="week"><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div></div>
+<div class="cal" id="cal"></div>
+</section>
+<section class="card summary"><b id="summary"></b><span>Le registrazioni restano memorizzate su questo dispositivo.</span></section>
+<div class="privacy">🔒 Nessun account · nessun cloud · nessun dato del bambino inviato online</div>
+</main>
+<dialog id="dlg"><form id="form">
+<div class="head"><h2 id="dateTitle"></h2><button type="button" class="x" id="close">✕</button></div>
+<div class="counter"><button type="button" class="round" id="minus">−</button><div class="count" id="count">0</div><button type="button" class="round" id="plus">+</button></div>
+<label>Nota facoltativa<textarea id="note" rows="3" placeholder="Es. dopo colazione, un po' di fatica..."></textarea></label>
+<div class="actions"><button type="button" class="clear" id="clear">Cancella</button><button class="save">Salva</button></div>
+</form></dialog>
+<script>
+const KEY="diarioCaccaCalendarV1",cal=document.querySelector("#cal"),title=document.querySelector("#title"),summary=document.querySelector("#summary"),dlg=document.querySelector("#dlg"),count=document.querySelector("#count"),note=document.querySelector("#note"),dateTitle=document.querySelector("#dateTitle");
+let view=new Date(),selected="",n=0;view=new Date(view.getFullYear(),view.getMonth(),1);
+const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}},save=x=>localStorage.setItem(KEY,JSON.stringify(x)),key=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+function render(){let data=load(),y=view.getFullYear(),m=view.getMonth(),first=new Date(y,m,1),off=(first.getDay()+6)%7,start=new Date(y,m,1-off),total=0,today=new Date();cal.innerHTML="";title.textContent=new Intl.DateTimeFormat("it-IT",{month:"long",year:"numeric"}).format(view);
+for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let e=data[key(d)]||{count:0},b=document.createElement("button");if(d.getMonth()==m)total+=e.count||0;b.className="day"+(d.getMonth()!=m?" other":"")+(d.toDateString()==today.toDateString()?" today":"");let icons=e.count?`<div class="poop">${"💩".repeat(Math.min(e.count,5))}${e.count>5?"…":""}</div>`:"";b.innerHTML=`<div class="num">${d.getDate()}</div>${e.count?`<div class="badge">${e.count}</div>`:""}${icons}`;b.onclick=()=>openDay(d);cal.appendChild(b)}summary.textContent=`${total} ${total===1?"cacca":"cacche"} questo mese`}
+function openDay(d){let data=load(),e=data[key(d)]||{count:0,note:""};selected=key(d);n=e.count||0;count.textContent=n;note.value=e.note||"";dateTitle.textContent=new Intl.DateTimeFormat("it-IT",{weekday:"long",day:"numeric",month:"long"}).format(d);dlg.showModal()}
+prev.onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};next.onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};plus.onclick=()=>{n++;count.textContent=n};minus.onclick=()=>{n=Math.max(0,n-1);count.textContent=n};close.onclick=()=>dlg.close();
+form.onsubmit=e=>{e.preventDefault();let data=load();if(n===0&&!note.value.trim())delete data[selected];else data[selected]={count:n,note:note.value.trim()};save(data);dlg.close();render()};
+clear.onclick=()=>{let data=load();delete data[selected];save(data);dlg.close();render()};
+if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js");render();
+</script>
+</body></html>
